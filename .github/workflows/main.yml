@@ -16,17 +16,35 @@ jobs:
       - name: Extract Project Zip Automatically
         shell: pwsh
         run: |
-          Get-ChildItem -Filter *.zip | ForEach-Object {
-            Write-Host "Extracting $_.FullName..."
-            Expand-Archive -Path $_.FullName -DestinationPath . -Force
+          foreach ($z in (Get-ChildItem -Filter *.zip)) {
+            Expand-Archive -Path $z.FullName -DestinationPath . -Force
           }
 
-      - name: Fix Package References
+      - name: Prepare Project Files
         shell: pwsh
         run: |
-          $file = "OmniAudioPlayer/OmniAudioPlayer.csproj"
-          if (Test-Path $file) {
-            (Get-Content $file) -notmatch 'Microsoft\.Maui\.Controls' \vert{} Set-Content$file
+          $csproj = "OmniAudioPlayer/OmniAudioPlayer.csproj"
+          if (Test-Path $csproj) {
+            $c = Get-Content -Path $csproj -Raw
+            $c = $c.Replace('$(MauiVersion)', '8.0.82')
+            $c = $c.Replace('<PackageReference Include="CommunityToolkit.Maui" Version="9.0.0" />', '')
+            $c = $c.Replace('<PackageReference Include="CommunityToolkit.Maui.MediaElement" Version="4.0.0" />', '')
+            Set-Content -Path $csproj -Value $c
+          }
+          $mp = "OmniAudioPlayer/MauiProgram.cs"
+          if (Test-Path $mp) {
+            $m = Get-Content -Path $mp -Raw
+            $m = $m.Replace('using CommunityToolkit.Maui;', '')
+            $m = $m.Replace('.UseMauiCommunityToolkit()', '')
+            $m = $m.Replace('.UseMauiCommunityToolkitMediaElement()', '')
+            Set-Content -Path $mp -Value $m
+          }
+          $xaml = "OmniAudioPlayer/Views/MainPage.xaml"
+          if (Test-Path $xaml) {
+            $x = Get-Content -Path $xaml -Raw
+            $x = $x.Replace('x:DataType="vm:MainViewModel"', '')
+            $x = $x.Replace('x:DataType="models:AudioTrack"', '')
+            Set-Content -Path $xaml -Value $x
           }
 
       - name: Setup .NET 8 SDK
@@ -47,32 +65,14 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path "omniaudio-release.keystore")) {
-            keytool -genkeypair -v `
-              -keystore omniaudio-release.keystore `
-              -alias omniaudio `
-              -keyalg RSA `
-              -keysize 2048 `
-              -validity 10000 `
-              -storepass OmniAudio123! `
-              -keypass OmniAudio123! `
-              -dname "CN=OmniAudioPlayer, OU=Mobile, O=OmniAudio, L=Cairo, S=EG, C=EG"
+            keytool -genkeypair -v -keystore omniaudio-release.keystore -alias omniaudio -keyalg RSA -keysize 2048 -validity 10000 -storepass OmniAudio123! -keypass OmniAudio123! -dname "CN=OmniAudioPlayer, OU=Mobile, O=OmniAudio, L=Cairo, S=EG, C=EG"
           }
 
       - name: Publish Signed Release APK
         shell: pwsh
         run: |
           $keystore = (Get-Item "omniaudio-release.keystore").FullName
-          dotnet publish OmniAudioPlayer/OmniAudioPlayer.csproj `
-            -f net8.0-android `
-            -c Release `
-            -p:CheckEolWorkloads=false `
-            -p:AndroidPackageFormat=apk `
-            -p:AndroidKeyStore=true `
-            -p:AndroidSigningKeyStore="$keystore" `
-            -p:AndroidSigningKeyAlias=omniaudio `
-            -p:AndroidSigningKeyPass=OmniAudio123! `
-            -p:AndroidSigningStorePass=OmniAudio123! `
-            -o ./published-apk
+          dotnet publish OmniAudioPlayer/OmniAudioPlayer.csproj -f net8.0-android -c Release -p:MauiVersion=8.0.82 -p:CheckEolWorkloads=false -p:AndroidPackageFormat=apk -p:AndroidKeyStore=true -p:AndroidSigningKeyStore="$keystore" -p:AndroidSigningKeyAlias=omniaudio -p:AndroidSigningKeyPass=OmniAudio123! -p:AndroidSigningStorePass=OmniAudio123! -o ./published-apk
 
       - name: Upload Ready-to-Install Signed APK
         uses: actions/upload-artifact@v4
