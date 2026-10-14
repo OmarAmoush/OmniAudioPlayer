@@ -21,6 +21,14 @@ jobs:
             Expand-Archive -Path $_.FullName -DestinationPath . -Force
           }
 
+      - name: Fix Package References
+        shell: pwsh
+        run: |
+          $file = "OmniAudioPlayer/OmniAudioPlayer.csproj"
+          if (Test-Path $file) {
+            (Get-Content $file) -notmatch 'Microsoft\.Maui\.Controls' \vert{} Set-Content$file
+          }
+
       - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -51,8 +59,20 @@ jobs:
           }
 
       - name: Publish Signed Release APK
+        shell: pwsh
         run: |
-          dotnet publish OmniAudioPlayer/OmniAudioPlayer.csproj -f net8.0-android -c Release -p:CheckEolWorkloads=false -p:AndroidPackageFormat=apk -p:AndroidKeyStore=true -p:AndroidSigningKeyStore="omniaudio-release.keystore" -p:AndroidSigningKeyAlias=omniaudio -p:AndroidSigningKeyPass=OmniAudio123! -p:AndroidSigningStorePass=OmniAudio123! -o ./published-apk
+          $keystore = (Get-Item "omniaudio-release.keystore").FullName
+          dotnet publish OmniAudioPlayer/OmniAudioPlayer.csproj `
+            -f net8.0-android `
+            -c Release `
+            -p:CheckEolWorkloads=false `
+            -p:AndroidPackageFormat=apk `
+            -p:AndroidKeyStore=true `
+            -p:AndroidSigningKeyStore="$keystore" `
+            -p:AndroidSigningKeyAlias=omniaudio `
+            -p:AndroidSigningKeyPass=OmniAudio123! `
+            -p:AndroidSigningStorePass=OmniAudio123! `
+            -o ./published-apk
 
       - name: Upload Ready-to-Install Signed APK
         uses: actions/upload-artifact@v4
