@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:OmniAudioPlayer.ViewModels"
+             xmlns:models="clr-namespace:OmniAudioPlayer.Models"
+             x:Class="OmniAudioPlayer.Views.MainPage"
+             x:DataType="vm:MainViewModel"
+             BackgroundColor="#0F172A"
+             FlowDirection="RightToLeft">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Padding="16" RowSpacing="12">
+
+        <!-- Header & Action Buttons -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <VerticalStackLayout Grid.Column="0">
+                <Label Text="مشغل الصوتيات الشامل"
+                       FontSize="22"
+                       FontAttributes="Bold"
+                       TextColor="#F8FAFC" />
+                <Label Text="{Binding StatusMessage}"
+                       FontSize="12"
+                       TextColor="#38BDF8"
+                       LineBreakMode="TailTruncation" />
+            </VerticalStackLayout>
+
+            <Button Grid.Column="1"
+                    Text="📂 فتح ملفات"
+                    Command="{Binding PickFilesCommand}"
+                    BackgroundColor="#0284C7"
+                    TextColor="White"
+                    CornerRadius="10"
+                    FontSize="13"
+                    Padding="12,8" />
+
+            <Button Grid.Column="2"
+                    Text="🔄 فحص الجهاز"
+                    Command="{Binding ScanDeviceCommand}"
+                    BackgroundColor="#1E293B"
+                    TextColor="#38BDF8"
+                    BorderColor="#38BDF8"
+                    BorderWidth="1"
+                    CornerRadius="10"
+                    FontSize="13"
+                    Padding="12,8" />
+        </Grid>
+
+        <!-- Search & Extension Filter Bar -->
+        <VerticalStackLayout Grid.Row="1" Spacing="8">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <SearchBar Grid.Column="0"
+                           Placeholder="ابحث باسم المقطع أو الفنان أو الامتداد (MP3, FLAC, WAV, OPUS...)"
+                           Text="{Binding SearchQuery}"
+                           TextColor="White"
+                           PlaceholderColor="#64748B"
+                           BackgroundColor="#1E293B"
+                           CancelButtonColor="#38BDF8" />
+
+                <Button Grid.Column="1"
+                        Text="⭐ المفضلة"
+                        Command="{Binding ToggleShowFavoritesCommand}"
+                        BackgroundColor="#1E293B"
+                        TextColor="#FACC15"
+                        CornerRadius="10"
+                        Padding="12,0" />
+            </Grid>
+
+            <!-- Format Chips -->
+            <CollectionView ItemsSource="{Binding AvailableExtensions}"
+                            SelectionMode="Single"
+                            SelectedItem="{Binding SelectedExtensionFilter}"
+                            HeightRequest="38"
+                            ItemsLayout="HorizontalList">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                        <Border Stroke="#334155"
+                                StrokeShape="RoundRectangle 16"
+                                BackgroundColor="#1E293B"
+                                Padding="14,6"
+                                Margin="0,0,6,0">
+                            <Label Text="{Binding .}"
+                                   TextColor="#E2E8F0"
+                                   FontSize="12"
+                                   FontAttributes="Bold"
+                                   VerticalOptions="Center" />
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+
+        <!-- Audio Tracks List -->
+        <CollectionView Grid.Row="2"
+                        ItemsSource="{Binding FilteredTracks}"
+                        EmptyView="لا توجد ملفات صوتية معروضة حالياً. اضغط على 'فتح ملفات' أو 'فحص الجهاز' لاستيراد جميع الصوتيات.">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:AudioTrack">
+                    <Border Stroke="#1E293B"
+                            StrokeShape="RoundRectangle 12"
+                            BackgroundColor="#1E293B"
+                            Padding="12"
+                            Margin="0,4">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=PlaySelectedTrackCommand}"
+                                                  CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12" VerticalOptions="Center">
+                            <!-- Format Badge -->
+                            <Border Grid.Column="0"
+                                    BackgroundColor="#0284C7"
+                                    StrokeShape="RoundRectangle 8"
+                                    Padding="8,6"
+                                    VerticalOptions="Center">
+                                <Label Text="{Binding FormatBadge}"
+                                       TextColor="White"
+                                       FontSize="11"
+                                       FontAttributes="Bold" />
+                            </Border>
+
+                            <!-- Title & Artist -->
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                <Label Text="{Binding Title}"
+                                       TextColor="#F8FAFC"
+                                       FontSize="15"
+                                       FontAttributes="Bold"
+                                       LineBreakMode="TailTruncation" />
+                                <Label Text="{Binding Artist}"
+                                       TextColor="#94A3B8"
+                                       FontSize="12"
+                                       LineBreakMode="TailTruncation" />
+                            </VerticalStackLayout>
+
+                            <!-- Duration & Size -->
+                            <VerticalStackLayout Grid.Column="2" VerticalOptions="Center" HorizontalOptions="End">
+                                <Label Text="{Binding FormattedDuration}"
+                                       TextColor="#38BDF8"
+                                       FontSize="12"
+                                       HorizontalTextAlignment="End" />
+                                <Label Text="{Binding FormattedSize}"
+                                       TextColor="#64748B"
+                                       FontSize="10"
+                                       HorizontalTextAlignment="End" />
+                            </VerticalStackLayout>
+
+                            <!-- Favorite Button -->
+                            <Button Grid.Column="3"
+                                    Text="★"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:MainViewModel}}, Path=ToggleFavoriteCommand}"
+                                    CommandParameter="{Binding .}"
+                                    BackgroundColor="Transparent"
+                                    TextColor="#FACC15"
+                                    FontSize="18"
+                                    WidthRequest="40"
+                                    HeightRequest="40" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- Bottom Now Playing Deck -->
+        <Border Grid.Row="3"
+                Stroke="#334155"
+                StrokeShape="RoundRectangle 20"
+                BackgroundColor="#1E293B"
+                Padding="16,12">
+            <VerticalStackLayout Spacing="10">
+
+                <!-- Track Info & Speed / Repeat Controls -->
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <VerticalStackLayout Grid.Column="0">
+                        <Label Text="{Binding CurrentTrack.Title, FallbackValue='لم يتم اختيار مقطع صوتي'}"
+                               TextColor="#F8FAFC"
+                               FontSize="16"
+                               FontAttributes="Bold"
+                               LineBreakMode="TailTruncation" />
+                        <Label Text="{Binding CurrentTrack.Artist, FallbackValue='اختر أي ملف صوتي لبدء التشغيل'}"
+                               TextColor="#94A3B8"
+                               FontSize="12"
+                               LineBreakMode="TailTruncation" />
+                    </VerticalStackLayout>
+
+                    <Button Grid.Column="1"
+                            Text="{Binding PlaybackSpeed, StringFormat='{0:0.##}x'}"
+                            Command="{Binding CycleSpeedCommand}"
+                            BackgroundColor="#0F172A"
+                            TextColor="#38BDF8"
+                            CornerRadius="8"
+                            FontSize="12"
+                            Padding="10,4" />
+
+                    <Button Grid.Column="2"
+                            Text="{Binding RepeatModeIcon}"
+                            Command="{Binding CycleRepeatModeCommand}"
+                            BackgroundColor="#0F172A"
+                            TextColor="#E2E8F0"
+                            CornerRadius="8"
+                            FontSize="12"
+                            Padding="10,4" />
+                </Grid>
+
+                <!-- Seek Slider & Timestamps -->
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalOptions="Center">
+                    <Label Grid.Column="0"
+                           Text="{Binding CurrentPositionText}"
+                           TextColor="#94A3B8"
+                           FontSize="12"
+                           VerticalOptions="Center" />
+
+                    <Slider Grid.Column="1"
+                            Minimum="0"
+                            Maximum="{Binding TotalDurationSeconds}"
+                            Value="{Binding CurrentPositionSeconds}"
+                            MinimumTrackColor="#38BDF8"
+                            MaximumTrackColor="#334155"
+                            ThumbColor="#38BDF8"
+                            ValueChanged="OnSeekSliderValueChanged" />
+
+                    <Label Grid.Column="2"
+                           Text="{Binding TotalDurationText}"
+                           TextColor="#94A3B8"
+                           FontSize="12"
+                           VerticalOptions="Center" />
+                </Grid>
+
+                <!-- Main Playback Controls -->
+                <Grid ColumnDefinitions="*,*,*,*,*" HorizontalOptions="Fill" VerticalOptions="Center">
+                    <Button Grid.Column="0"
+                            Text="⏮"
+                            Command="{Binding PreviousTrackCommand}"
+                            BackgroundColor="Transparent"
+                            TextColor="White"
+                            FontSize="22" />
+
+                    <Button Grid.Column="1"
+                            Text="⏪ 10s"
+                            Command="{Binding Rewind10Command}"
+                            BackgroundColor="Transparent"
+                            TextColor="#94A3B8"
+                            FontSize="13" />
+
+                    <Button Grid.Column="2"
+                            Text="⏯"
+                            Command="{Binding TogglePlayPauseCommand}"
+                            BackgroundColor="#38BDF8"
+                            TextColor="#0F172A"
+                            FontSize="24"
+                            FontAttributes="Bold"
+                            CornerRadius="28"
+                            WidthRequest="56"
+                            HeightRequest="56"
+                            HorizontalOptions="Center" />
+
+                    <Button Grid.Column="3"
+                            Text="10s ⏩"
+                            Command="{Binding SkipForward10Command}"
+                            BackgroundColor="Transparent"
+                            TextColor="#94A3B8"
+                            FontSize="13" />
+
+                    <Button Grid.Column="4"
+                            Text="⏭"
+                            Command="{Binding NextTrackCommand}"
+                            BackgroundColor="Transparent"
+                            TextColor="White"
+                            FontSize="22" />
+                </Grid>
+
+            </VerticalStackLayout>
+        </Border>
+
+    </Grid>
+</ContentPage>
